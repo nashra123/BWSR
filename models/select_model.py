@@ -24,6 +24,9 @@ def define_Model(opt):
     elif model == 'vrt':     # one video input L, for VRT
         from models.model_vrt import ModelVRT as M
 
+    elif model == 'bwsr':
+        from models.model_bwsr import ModelKernelEstimate as M
+
     else:
         raise NotImplementedError('Model [{:s}] is not defined.'.format(model))
 

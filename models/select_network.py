@@ -222,9 +222,9 @@ def define_G(opt):
                    no_checkpoint_attn_blocks=opt_net['no_checkpoint_attn_blocks'],
                    no_checkpoint_ffn_blocks=opt_net['no_checkpoint_ffn_blocks'])
 
-        # ----------------------------------------
-        # RVRT
-        # ----------------------------------------
+    # ----------------------------------------
+    # RVRT
+    # ----------------------------------------
     elif net_type == 'rvrt':
         from models.network_rvrt import RVRT as net
         netG = net(upscale=opt_net['upscale'],
@@ -247,6 +247,13 @@ def define_G(opt):
                    no_checkpoint_ffn_blocks=opt_net['no_checkpoint_ffn_blocks'],
                    cpu_cache_length=opt_net['cpu_cache_length'])
 
+    # ----------------------------------------
+    # Kernel Estimate
+    # ----------------------------------------
+    elif net_type == 'bwsr':
+        from models.network_bwsr import KernelEstimateNet as net
+        netG = net()
+    
     # ----------------------------------------
     # others
     # ----------------------------------------

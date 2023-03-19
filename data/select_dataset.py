@@ -47,6 +47,9 @@ def define_Dataset(dataset_opt):
     elif dataset_type in ['bsrnet', 'bsrgan', 'blindsr']:
         from data.dataset_blindsr import DatasetBlindSR as D
 
+    elif dataset_type in ['gt']:
+        from data.dataset_gt import DatasetGT as D
+
     # -------------------------------------------------
     # JPEG compression artifact reduction (deblocking)
     # -------------------------------------------------
