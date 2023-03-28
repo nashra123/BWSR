@@ -212,19 +212,11 @@ def main(json_path='options/train_bwsr.json'):
                     blur_kernel = blur_kernel / blur_kernel.sum()
                     blur_kernel = blur_kernel.squeeze()
 
-                    P_hathat_img = np.zeros_like(E_img, dtype=np.float64)
+                    P_hathat_img = np.zeros_like(L_img, dtype=np.float64)
                     P_hathat_img[:, :, 0], _ = unsupervised_wiener(util.uint2single(L_img[:, :, 0]), blur_kernel)
                     P_hathat_img[:, :, 1], _ = unsupervised_wiener(util.uint2single(L_img[:, :, 1]), blur_kernel)
                     P_hathat_img[:, :, 2], _ = unsupervised_wiener(util.uint2single(L_img[:, :, 2]), blur_kernel)
-                    print(f'{P_hathat_img=}')
                     P_hathat_img = util.single2uint(P_hathat_img)
-                    print(f'{P_hathat_img=}')
-
-                    # -----------------------
-                    # save estimated image E
-                    # -----------------------
-                    save_img_path = os.path.join(img_dir, '{:s}_{:d}.png'.format(img_name, current_step))
-                    util.imsave(P_hathat_img, save_img_path)
 
                     # -----------------------
                     # calculate PSNR
@@ -255,6 +247,12 @@ def main(json_path='options/train_bwsr.json'):
 
                     writer.add_scalar('val_G_ssim_p_hat', current_ssim_hat, test_size * test_step + idx)
                     writer.add_scalar('val_G_ssim_p_hathat', current_ssim_hathat, test_size * test_step + idx)
+
+                    # -----------------------
+                    # save estimated image E
+                    # -----------------------
+                    save_img_path = os.path.join(img_dir, '{:s}_{:d}_{:d}_{:d}.png'.format(img_name, current_step, current_psnr_hathat, current_ssim_hathat))
+                    util.imsave(P_hathat_img, save_img_path)
 
                 avg_psnr_hat = avg_psnr_hat / idx
                 avg_psnr_hathat = avg_psnr_hathat / idx
