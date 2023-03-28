@@ -73,15 +73,14 @@ class KernelEstimateNet(nn.Module):
         """
 
         # estimate P hat [m, n]
-        residual = lr_image
-        lr_image = self.conv1(lr_image)
-        lr_image = F.relu(lr_image)
-        lr_image = self.resblock1(lr_image)
-        lr_image = self.resblock2(lr_image)
-        lr_image = self.conv2(lr_image)
-        lr_image = F.relu(lr_image)
+        mod_image = self.conv1(lr_image)
+        mod_image = F.relu(mod_image)
+        mod_image = self.resblock1(mod_image)
+        mod_image = self.resblock2(mod_image)
+        mod_image = self.conv2(mod_image)
+        mod_image = F.relu(mod_image)
 
-        hr_image_est = lr_image + residual
+        hr_image_est = mod_image + lr_image
 
         # estimate h tilde [m, n]
         kernel_est = self.kernel_est_block(lr_image, hr_image_est)
