@@ -43,13 +43,28 @@ class ModelKernelEstimate(ModelPlain):
         self.G_lossfn_lambda = self.opt_train['G_lossfn_lambda']
 
     # ----------------------------------------
-    # feed L/H data
+    # feed L/P/H data
     # ----------------------------------------
     def feed_data(self, data, need_H=True):
         # L     ~ L [m, n]
         # P     ~ P [m, n]
         self.L, self.P, sigma, noise_level, lamb = self.prepro(data['H'])
         self.L = self.L.to(self.device)
+        self.P = self.P.to(self.device)
+        self.deg_dict = {
+            'sigma'         : sigma,
+            'noise_level'   : noise_level,
+            'lamb'          : lamb
+        }
+        if need_H:
+            self.H = data['H'].to(self.device)
+
+    # ----------------------------------------
+    # feed L/H data
+    # ----------------------------------------
+    def test_feed_data(self, data, need_H=True):
+        self.L = data['L'].to(self.device)
+        _, self.P, sigma, noise_level, lamb = self.prepro(data['H'])
         self.P = self.P.to(self.device)
         self.deg_dict = {
             'sigma'         : sigma,
@@ -106,6 +121,15 @@ class ModelKernelEstimate(ModelPlain):
             self.update_E(self.opt_train['E_decay'])
 
     # ----------------------------------------
+    # test / inference
+    # ----------------------------------------
+    def test(self):
+        self.netG.eval()
+        with torch.no_grad():
+            self.netG_forward()
+        self.netG.train()
+
+    # ----------------------------------------
     # get L, P, E, K, H image
     # ----------------------------------------
     def current_visuals(self, need_H=True):
@@ -130,3 +154,4 @@ class ModelKernelEstimate(ModelPlain):
         if need_H:
             out_dict['H'] = self.H.detach().float().cpu()
         return out_dict
+    
