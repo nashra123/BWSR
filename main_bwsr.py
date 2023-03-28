@@ -30,7 +30,7 @@ from models.select_model import define_Model
 '''
 
 
-def main(json_path='options/kernel_estimate_sr_on_the_fly.json'):
+def main(json_path='options/train_bwsr.json'):
 
     '''
     # ----------------------------------------
