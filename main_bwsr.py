@@ -251,7 +251,7 @@ def main(json_path='options/train_bwsr.json'):
                     # -----------------------
                     # save estimated image E
                     # -----------------------
-                    save_img_path = os.path.join(img_dir, '{:s}_{:d}_{:d}_{:d}.png'.format(img_name, current_step, current_psnr_hathat, current_ssim_hathat))
+                    save_img_path = os.path.join(img_dir, '{:s}_{:d}_{:05.2f}_{:5.4f}.png'.format(img_name, current_step, current_psnr_hathat, current_ssim_hathat))
                     util.imsave(P_hathat_img, save_img_path)
 
                 avg_psnr_hat = avg_psnr_hat / idx
