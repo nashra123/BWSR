@@ -155,7 +155,8 @@ def main(json_path='options/train_bwsr.json'):
             model.optimize_parameters(current_step)
 
             # -------------------------------
-            # 4) training information
+            # 4) training
+            #  information
             # -------------------------------
             if current_step % opt['train']['checkpoint_print'] == 0:
                 logs = model.current_log()  # such as loss
