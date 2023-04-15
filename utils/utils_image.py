@@ -1056,7 +1056,7 @@ def ycbcr_to_rgb(image: torch.Tensor) -> torch.Tensor:
         RGB version of the image with shape :math:`(*, 3, H, W)`.
 
     """
-    
+
     if not isinstance(image, torch.Tensor):
         raise TypeError(f"Input type is not a Tensor. Got {type(image)}")
 
@@ -1075,3 +1075,22 @@ def ycbcr_to_rgb(image: torch.Tensor) -> torch.Tensor:
     g: torch.Tensor = y - 0.714 * cr_shifted - 0.344 * cb_shifted
     b: torch.Tensor = y + 1.773 * cb_shifted
     return torch.stack([r, g, b], -3)
+
+def wiener_deconv(lr_images, kernels, K):
+    """
+    lr_images: y     [b, c, m, n]
+    kernels: P hat [b, c, m, n]
+    K : value of sigma 
+        1e-3/1e3
+    """
+
+    lr_images_spectral  = torch.fft.fft2(lr_images)
+    kernels_spectral    = torch.fft.fft2(kernels)
+
+    kernels_spectral_abs   = torch.abs(kernels_spectral)
+    kernels_spectral_conj  = torch.conj(kernels_spectral)
+
+    nominator   = kernels_spectral_conj * lr_images_spectral
+    denominator = kernels_spectral_abs ** 2 + K
+
+    return torch.abs(torch.fft.ifft2(nominator / denominator))
