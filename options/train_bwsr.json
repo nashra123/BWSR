@@ -60,9 +60,11 @@
 
   , "train": {
     "epochs": 1000000
-    , "G_lossfn_type": "l2"             // "l1" preferred | "l2sum" | "l2" | "ssim" | "charbonnier"
+    , "G_p_lossfn_type": "l1"           // "l1" preferred | "l2sum" | "l2" | "ssim" | "charbonnier"
+    , "G_h_lossfn_type": "l2"           // "l1" | "l2sum" | "l2" preferred | "ssim" | "charbonnier"
     , "G_lossfn_weight": 1.0            // default
-    , "G_lossfn_lambda": 1e-3
+    , "G_lossfn_lambda_p": 1.0          // coefficient of $\hat{p} - p$ expression in loss function
+    , "G_lossfn_lambda_h": 0.1          // coefficient of $\tilde{p}$ expression in loss function
 
     , "manual_seed": 42                 // manual seed to make result reproducible
 
@@ -84,7 +86,7 @@
     , "G_param_strict": true
     , "E_param_strict": true
 
-    , "checkpoint_test": 1000          // for testing
+    , "checkpoint_test": 200          // for testing
     , "checkpoint_save": 200           // for saving model
     , "checkpoint_print": 100           // for print
   }
