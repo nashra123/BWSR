@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from models.loss import CharbonnierLoss
 from models.loss_ssim import SSIMLoss
-from utils.utils_image import tensor2single, single2tensor4, single42tensor4, rgb2ycbcr
+from utils.utils_image import rgb_to_ycbcr
 from utils.utils_regularizers import regularizer_orth, regularizer_clip
 
 
@@ -73,15 +73,15 @@ class ModelKernelEstimate(ModelPlain):
         # L     ~ L [m, n]
         # P     ~ P [m, n]
         self.L, self.P, sigma, noise_level, lamb = self.prepro(data['H'])
-        self.L = single42tensor4(rgb2ycbcr(tensor2single(self.L), only_y=False))[:, 0, :, :].unsqueeze(1).to(self.device)
-        self.P = single42tensor4(rgb2ycbcr(tensor2single(self.P), only_y=False))[:, 0, :, :].unsqueeze(1).to(self.device)
+        self.L = rgb_to_ycbcr(self.L)[:, 0, :, :].unsqueeze(1).to(self.device)
+        self.P = rgb_to_ycbcr(self.P)[:, 0, :, :].unsqueeze(1).to(self.device)
         self.deg_dict = {
             'sigma'         : sigma,
             'noise_level'   : noise_level,
             'lamb'          : lamb
         }
         if need_H:
-            self.H = single42tensor4(rgb2ycbcr(tensor2single(data['H']), only_y=False))[:, 0, :, :].unsqueeze(1).to(self.device)
+            self.H = rgb_to_ycbcr(data['H'])[:, 0, :, :].unsqueeze(1).to(self.device)
 
     # ----------------------------------------
     # feed L/H data
@@ -89,16 +89,16 @@ class ModelKernelEstimate(ModelPlain):
     def test_feed_data(self, data, need_H=True):
         self.L = data['L']
         _, self.P, sigma, noise_level, lamb = self.prepro(data['H'])
-        self.L = single2tensor4(rgb2ycbcr(tensor2single(self.L), only_y=False))[:, 0, :, :].unsqueeze(1).to(self.device)
+        self.L = rgb_to_ycbcr(self.L)[:, 0, :, :].unsqueeze(1).to(self.device)
         self.L_rgb = data['L'].to(self.device)
-        self.P = single2tensor4(rgb2ycbcr(tensor2single(self.P), only_y=False))[:, 0, :, :].unsqueeze(1).to(self.device)
+        self.P = rgb_to_ycbcr(self.P)[:, 0, :, :].unsqueeze(1).to(self.device)
         self.deg_dict = {
             'sigma'         : sigma,
             'noise_level'   : noise_level,
             'lamb'          : lamb
         }
         if need_H:
-            self.H = single2tensor4(rgb2ycbcr(tensor2single(data['H']), only_y=False))[:, 0, :, :].unsqueeze(1).to(self.device)
+            self.H = rgb_to_ycbcr(data['H'])[:, 0, :, :].unsqueeze(1).to(self.device)
 
     # ----------------------------------------
     # feed L to netG
