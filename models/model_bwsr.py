@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from models.loss import CharbonnierLoss
 from models.loss_ssim import SSIMLoss
+from utils.utils_image import tensor2single, single2tensor4, single42tensor4, rgb2ycbcr
 from utils.utils_regularizers import regularizer_orth, regularizer_clip
 
 
@@ -26,21 +27,44 @@ class ModelKernelEstimate(ModelPlain):
     # define loss
     # ----------------------------------------
     def define_loss(self):
-        G_lossfn_type = self.opt_train['G_lossfn_type']
-        if G_lossfn_type == 'l1':
-            self.G_lossfn = nn.L1Loss().to(self.device)
-        elif G_lossfn_type == 'l2':
-            self.G_lossfn = nn.MSELoss().to(self.device)
-        elif G_lossfn_type == 'l2sum':
-            self.G_lossfn = nn.MSELoss(reduction='sum').to(self.device)
-        elif G_lossfn_type == 'ssim':
-            self.G_lossfn = SSIMLoss().to(self.device)
-        elif G_lossfn_type == 'charbonnier':
-            self.G_lossfn = CharbonnierLoss(self.opt_train['G_charbonnier_eps']).to(self.device)
+
+        # --------------------------------------------------------
+        # define loss function for image similarity $\hat{p} - p$
+        # --------------------------------------------------------
+        G_p_lossfn_type = self.opt_train['G_p_lossfn_type']
+        if G_p_lossfn_type == 'l1':
+            self.G_p_lossfn = nn.L1Loss().to(self.device)
+        elif G_p_lossfn_type == 'l2':
+            self.G_p_lossfn = nn.MSELoss().to(self.device)
+        elif G_p_lossfn_type == 'l2sum':
+            self.G_p_lossfn = nn.MSELoss(reduction='sum').to(self.device)
+        elif G_p_lossfn_type == 'ssim':
+            self.G_p_lossfn = SSIMLoss().to(self.device)
+        elif G_p_lossfn_type == 'charbonnier':
+            self.G_p_lossfn = CharbonnierLoss(self.opt_train['G_charbonnier_eps']).to(self.device)
         else:
-            raise NotImplementedError('Loss type [{:s}] is not found.'.format(G_lossfn_type))
+            raise NotImplementedError('Loss type [{:s}] is not found.'.format(G_p_lossfn_type))
+        
+        # --------------------------------------------------------
+        # define loss function for kernel energy $\tilde{h}$
+        # --------------------------------------------------------
+        G_h_lossfn_type = self.opt_train['G_h_lossfn_type']
+        if G_h_lossfn_type == 'l1':
+            self.G_h_lossfn = nn.L1Loss().to(self.device)
+        elif G_h_lossfn_type == 'l2':
+            self.G_h_lossfn = nn.MSELoss().to(self.device)
+        elif G_h_lossfn_type == 'l2sum':
+            self.G_h_lossfn = nn.MSELoss(reduction='sum').to(self.device)
+        elif G_h_lossfn_type == 'ssim':
+            self.G_h_lossfn = SSIMLoss().to(self.device)
+        elif G_h_lossfn_type == 'charbonnier':
+            self.G_h_lossfn = CharbonnierLoss(self.opt_train['G_charbonnier_eps']).to(self.device)
+        else:
+            raise NotImplementedError('Loss type [{:s}] is not found.'.format(G_h_lossfn_type))
+        
         self.G_lossfn_weight = self.opt_train['G_lossfn_weight']
-        self.G_lossfn_lambda = self.opt_train['G_lossfn_lambda']
+        self.G_lossfn_lambda_p = self.opt_train['G_lossfn_lambda_p']
+        self.G_lossfn_lambda_h = self.opt_train['G_lossfn_lambda_h']
 
     # ----------------------------------------
     # feed L/P/H data
@@ -63,8 +87,9 @@ class ModelKernelEstimate(ModelPlain):
     # feed L/H data
     # ----------------------------------------
     def test_feed_data(self, data, need_H=True):
-        self.L = data['L'].to(self.device)
+        self.L = data['L']
         _, self.P, sigma, noise_level, lamb = self.prepro(data['H'])
+        self.L = self.L.to(self.device)
         self.P = self.P.to(self.device)
         self.deg_dict = {
             'sigma'         : sigma,
@@ -88,9 +113,9 @@ class ModelKernelEstimate(ModelPlain):
         self.G_optimizer.zero_grad()
         self.netG_forward()
 
-        G_loss = self.G_lossfn_weight * (                                                    \
-                    self.G_lossfn(self.E, self.P) +                                          \
-                    self.G_lossfn_lambda * self.G_lossfn(self.K, torch.zeros_like(self.K))   \
+        G_loss = self.G_lossfn_weight * (                                                       \
+                    self.G_lossfn_lambda_p * self.G_p_lossfn(self.E, self.P) +                  \
+                    self.G_lossfn_lambda_h * self.G_h_lossfn(self.K, torch.zeros_like(self.K))  \
             )
         G_loss.backward()
 

@@ -253,6 +253,10 @@ def define_G(opt):
     elif net_type == 'bwsr':
         from models.network_bwsr import KernelEstimateNet as net
         netG = net()
+
+    elif net_type == 'bwsr_y':
+        from models.network_bwsr_y import KernelEstimateNet as net
+        netG = net()
     
     # ----------------------------------------
     # others

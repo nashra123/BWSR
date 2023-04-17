@@ -51,7 +51,7 @@ class KernelEstimateBlock(nn.Module):
         nominator   = hr_image_spectral_conj * lr_image_spectral
         denominator = hr_image_spectral_abs ** 2 + self.epsilon
 
-        return torch.real(torch.fft.ifft2(nominator / denominator))
+        return torch.abs(torch.fft.ifft2(nominator / denominator))
 
 
 class KernelEstimateNet(nn.Module):

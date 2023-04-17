@@ -317,6 +317,8 @@ def tensor2single(img):
     img = img.data.squeeze().float().cpu().numpy()
     if img.ndim == 3:
         img = np.transpose(img, (1, 2, 0))
+    elif img.ndim == 4:
+        img = np.transpose(img, (0, 2, 3, 1))
 
     return img
 
@@ -339,7 +341,7 @@ def single32tensor5(img):
 
 
 def single42tensor4(img):
-    return torch.from_numpy(np.ascontiguousarray(img)).permute(2, 0, 1, 3).float()
+    return torch.from_numpy(np.ascontiguousarray(img)).permute(0, 3, 1, 2).float()
 
 
 # from skimage.io import imread, imsave
@@ -1094,3 +1096,4 @@ def wiener_deconv(lr_images, kernels, K):
     denominator = kernels_spectral_abs ** 2 + K
 
     return torch.abs(torch.fft.ifft2(nominator / denominator))
+

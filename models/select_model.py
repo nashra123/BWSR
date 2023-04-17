@@ -27,6 +27,9 @@ def define_Model(opt):
     elif model == 'bwsr':
         from models.model_bwsr import ModelKernelEstimate as M
 
+    elif model == 'bwsr_y':
+        from models.model_bwsr_y import ModelKernelEstimate as M
+
     else:
         raise NotImplementedError('Model [{:s}] is not defined.'.format(model))
 
