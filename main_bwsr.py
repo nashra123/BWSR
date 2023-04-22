@@ -15,6 +15,8 @@ from utils import utils_logger
 from utils import utils_image as util
 from utils import utils_option as option
 from utils import utils_sisr as sisr
+from utils import utils_image as utilimg
+
 
 from data.select_dataset import define_Dataset
 from models.select_model import define_Model
@@ -25,6 +27,7 @@ from models.select_model import define_Model
 # training code for Kernel Estimate Network
 # --------------------------------------------
 # AmirMohammad Babaei (amirmohamad.babaei79@gmail.com)
+# Nashra Babar (nashrababar111@gmail.com)
 # github: https://github.com/cszn/KAIR  #TODO change the repo url
 # --------------------------------------------
 '''
@@ -212,13 +215,27 @@ def main(json_path='options/train_bwsr.json'):
                     blur_kernel = K_img.sum(axis=-1, dtype=np.float64)
                     blur_kernel = blur_kernel / blur_kernel.sum()
                     blur_kernel = blur_kernel.squeeze()
-
+                    
+                    L_img_torch = util.single2tensor3(L_img/L_img.max())
+                    K_img_torch = util.single2tensor3(K_img/K_img.max())
+                    #P_img_torch = util.single2tensor3(P_img/P_img.max())
+                    
+                    P_hathat_img    = utilimg.wiener_deconv(L_img_torch[0], K_img_torch,1e3)
+                    K_img_torch = K_img_torch.squeeze()          
+                    p_hathat_image_ycbcr= K_img_torch.clone()
+                    p_hathat_image_ycbcr[0] = ((P_hathat_img - P_hathat_img.min()) / (P_hathat_img.max() - P_hathat_img.min())) * (K_img_torch.max() - K_img_torch.min())
+                    
+                    p_hathat_image = utilimg.ycbcr_to_rgb(p_hathat_image_ycbcr)
+                    p_hathat_image = p_hathat_image/p_hathat_image.max()
+                    P_hathat_img = util.single2uint(P_hathat_img)
+                    
+                    '''
                     P_hathat_img = np.zeros_like(L_img, dtype=np.float64)
                     P_hathat_img[:, :, 0], _ = unsupervised_wiener(util.uint2single(L_img[:, :, 0]), blur_kernel)
                     P_hathat_img[:, :, 1], _ = unsupervised_wiener(util.uint2single(L_img[:, :, 1]), blur_kernel)
                     P_hathat_img[:, :, 2], _ = unsupervised_wiener(util.uint2single(L_img[:, :, 2]), blur_kernel)
                     P_hathat_img = util.single2uint(P_hathat_img)
-
+                    '''
                     # -----------------------
                     # calculate PSNR
                     # -----------------------
