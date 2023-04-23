@@ -33,7 +33,7 @@ from models.select_model import define_Model
 '''
 
 
-def main(json_path='options/train_bwsr.json'):
+def main(json_path='options/train_bwsr_y.json'):
 
     '''
     # ----------------------------------------
@@ -202,9 +202,10 @@ def main(json_path='options/train_bwsr.json'):
                     model.test()
 
                     visuals = model.current_visuals()
-                    L_img = util.tensor2uint(visuals['L'])
+                    L_img = visuals['L']
+                    K_img = visuals['K']
+                    L_rgb_img = visuals['L_rgb']
                     E_img = util.tensor2uint(visuals['E'])
-                    K_img = util.tensor2uint(visuals['K'])
                     P_img = util.tensor2uint(visuals['P'])
                     H_img = util.tensor2uint(visuals['H'])
 
@@ -212,22 +213,26 @@ def main(json_path='options/train_bwsr.json'):
                     # print(f'{K_img.shape=}')
                     # print(f'{P_img.shape=}')
 
-                    blur_kernel = K_img.sum(axis=-1, dtype=np.float64)
+                    blur_kernel = K_img.sum(axis=-1).float()
                     blur_kernel = blur_kernel / blur_kernel.sum()
                     blur_kernel = blur_kernel.squeeze()
                     
-                    L_img_torch = util.single2tensor3(L_img/L_img.max())
-                    K_img_torch = util.single2tensor3(K_img/K_img.max())
+                    L_img_torch = L_img/L_img.max()
+                    K_img_torch = K_img/K_img.max()
                     #P_img_torch = util.single2tensor3(P_img/P_img.max())
                     
-                    P_hathat_img    = utilimg.wiener_deconv(L_img_torch[0], K_img_torch,1e3)
-                    K_img_torch = K_img_torch.squeeze()          
-                    p_hathat_image_ycbcr= K_img_torch.clone()
-                    p_hathat_image_ycbcr[0] = ((P_hathat_img - P_hathat_img.min()) / (P_hathat_img.max() - P_hathat_img.min())) * (K_img_torch.max() - K_img_torch.min())
+                    p_hathat_y    = utilimg.wiener_deconv(L_img_torch, K_img_torch,1e3)
+                    L_ycbcr_img = utilimg.rgb_to_ycbcr(L_rgb_img)
+                    #print(f'{L_ycbcr_img.size()=}')      
+                    L_ycbcr_img[0] = ((p_hathat_y - p_hathat_y.min()) / (p_hathat_y.max() - p_hathat_y.min())) * (L_ycbcr_img[0].max() - L_ycbcr_img[0].min())
                     
-                    p_hathat_image = utilimg.ycbcr_to_rgb(p_hathat_image_ycbcr)
+                    p_hathat_image = utilimg.ycbcr_to_rgb(L_ycbcr_img)
+                    #print(f'{p_hathat_image.size()=}')
                     p_hathat_image = p_hathat_image/p_hathat_image.max()
-                    P_hathat_img = util.single2uint(P_hathat_img)
+                    P_hathat_img_y = util.tensor2uint(utilimg.rgb_to_ycbcr(p_hathat_image)[0])
+                    P_hathat_img = util.tensor2uint(p_hathat_image)
+                    #print(f'{P_hathat_img_y.shape=}')
+                    #print(f'{P_img.shape=}')
                     
                     '''
                     P_hathat_img = np.zeros_like(L_img, dtype=np.float64)
@@ -240,7 +245,7 @@ def main(json_path='options/train_bwsr.json'):
                     # calculate PSNR
                     # -----------------------
                     current_psnr_hat    = util.calculate_psnr(E_img, P_img, border=border)
-                    current_psnr_hathat = util.calculate_psnr(P_hathat_img, P_img, border=border)
+                    current_psnr_hathat = util.calculate_psnr(P_hathat_img_y, P_img, border=border)
 
                     logger.info('PSNR(P^ , P): {:->4d}--> {:>10s} | {:<4.2f}dB'.format(idx, image_name_ext, current_psnr_hat))
                     logger.info('PSNR(P^^, P): {:->4d}--> {:>10s} | {:<4.2f}dB'.format(idx, image_name_ext, current_psnr_hathat))
@@ -255,7 +260,7 @@ def main(json_path='options/train_bwsr.json'):
                     # calculate SSIM
                     # -----------------------
                     current_ssim_hat    = util.calculate_ssim(E_img, P_img, border=border)
-                    current_ssim_hathat = util.calculate_ssim(P_hathat_img, P_img, border=border)
+                    current_ssim_hathat = util.calculate_ssim(P_hathat_img_y, P_img, border=border)
 
                     logger.info('SSIM(P^ , P): {:->4d}--> {:>10s} | {:<5.4f}'.format(idx, image_name_ext, current_ssim_hat))
                     logger.info('SSIM(P^^, P): {:->4d}--> {:>10s} | {:<5.4f}'.format(idx, image_name_ext, current_ssim_hathat))
