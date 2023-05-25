@@ -104,7 +104,7 @@ class ModelKernelEstimate(ModelPlain):
     # ----------------------------------------
     def netG_forward(self):
         # E     ~ P^[m, n]
-        self.E, self.K = self.netG(self.L)
+        self.E, self.Q, self.K = self.netG(self.L)
 
     # ----------------------------------------
     # update parameters and get loss
@@ -162,6 +162,7 @@ class ModelKernelEstimate(ModelPlain):
         out_dict['L'] = self.L.detach()[0].float().cpu()
         out_dict['P'] = self.P.detach()[0].float().cpu()
         out_dict['E'] = self.E.detach()[0].float().cpu()
+        out_dict['Q'] = self.Q.detach()[0].float().cpu()
         out_dict['K'] = self.K.detach()[0].float().cpu()
         if need_H:
             out_dict['H'] = self.H.detach()[0].float().cpu()
@@ -175,6 +176,7 @@ class ModelKernelEstimate(ModelPlain):
         out_dict['L'] = self.L.detach().float().cpu()
         out_dict['P'] = self.P.detach().float().cpu()
         out_dict['E'] = self.E.detach().float().cpu()
+        out_dict['Q'] = self.Q.detach().float().cpu()
         out_dict['K'] = self.K.detach().float().cpu()
         if need_H:
             out_dict['H'] = self.H.detach().float().cpu()

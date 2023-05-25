@@ -1,22 +1,16 @@
 import os.path
 import math
 import argparse
-import time
 import random
 import numpy as np
-from collections import OrderedDict
 import logging
 from torch.utils.data import DataLoader
 import torch
 from torch.utils.tensorboard import SummaryWriter
-from skimage.restoration import unsupervised_wiener
 
 from utils import utils_logger
 from utils import utils_image as util
 from utils import utils_option as option
-from utils import utils_sisr as sisr
-from utils import utils_image as utilimg
-
 
 from data.select_dataset import define_Dataset
 from models.select_model import define_Model
@@ -33,7 +27,7 @@ from models.select_model import define_Model
 '''
 
 
-def main(json_path='options/train_bwsr_y.json'):
+def main(json_path='options/train_bwsr.json'):
 
     '''
     # ----------------------------------------
@@ -158,8 +152,7 @@ def main(json_path='options/train_bwsr_y.json'):
             model.optimize_parameters(current_step)
 
             # -------------------------------
-            # 4) training
-            #  information
+            # 4) training information
             # -------------------------------
             if current_step % opt['train']['checkpoint_print'] == 0:
                 logs = model.current_log()  # such as loss
@@ -202,50 +195,18 @@ def main(json_path='options/train_bwsr_y.json'):
                     model.test()
 
                     visuals = model.current_visuals()
-                    L_img = visuals['L']
-                    K_img = visuals['K']
-                    L_rgb_img = visuals['L_rgb']
-                    E_img = util.tensor2uint(visuals['E'])
+                    # L_img = util.tensor2uint(visuals['L'])
+                    # K_img = util.tensor2uint(visuals['K'])
+                    E_img = util.tensor2uint(visuals['E'])  # \hat{p}
+                    Q_img = util.tensor2uint(visuals['Q'])  # \hat{\hat{p}}
                     P_img = util.tensor2uint(visuals['P'])
-                    H_img = util.tensor2uint(visuals['H'])
+                    # H_img = util.tensor2uint(visuals['H'])
 
-                    # print(f'{E_img.shape=}')
-                    # print(f'{K_img.shape=}')
-                    # print(f'{P_img.shape=}')
-
-                    blur_kernel = K_img.sum(axis=-1).float()
-                    blur_kernel = blur_kernel / blur_kernel.sum()
-                    blur_kernel = blur_kernel.squeeze()
-                    
-                    L_img_torch = L_img/L_img.max()
-                    K_img_torch = K_img/K_img.max()
-                    #P_img_torch = util.single2tensor3(P_img/P_img.max())
-                    
-                    p_hathat_y    = utilimg.wiener_deconv(L_img_torch, K_img_torch,1e3)
-                    L_ycbcr_img = utilimg.rgb_to_ycbcr(L_rgb_img)
-                    #print(f'{L_ycbcr_img.size()=}')      
-                    L_ycbcr_img[0] = ((p_hathat_y - p_hathat_y.min()) / (p_hathat_y.max() - p_hathat_y.min())) * (L_ycbcr_img[0].max() - L_ycbcr_img[0].min())
-                    
-                    p_hathat_image = utilimg.ycbcr_to_rgb(L_ycbcr_img)
-                    #print(f'{p_hathat_image.size()=}')
-                    p_hathat_image = p_hathat_image/p_hathat_image.max()
-                    P_hathat_img_y = util.tensor2uint(utilimg.rgb_to_ycbcr(p_hathat_image)[0])
-                    P_hathat_img = util.tensor2uint(p_hathat_image)
-                    #print(f'{P_hathat_img_y.shape=}')
-                    #print(f'{P_img.shape=}')
-                    
-                    '''
-                    P_hathat_img = np.zeros_like(L_img, dtype=np.float64)
-                    P_hathat_img[:, :, 0], _ = unsupervised_wiener(util.uint2single(L_img[:, :, 0]), blur_kernel)
-                    P_hathat_img[:, :, 1], _ = unsupervised_wiener(util.uint2single(L_img[:, :, 1]), blur_kernel)
-                    P_hathat_img[:, :, 2], _ = unsupervised_wiener(util.uint2single(L_img[:, :, 2]), blur_kernel)
-                    P_hathat_img = util.single2uint(P_hathat_img)
-                    '''
                     # -----------------------
                     # calculate PSNR
                     # -----------------------
-                    current_psnr_hat    = util.calculate_psnr(E_img, P_img, border=border)
-                    current_psnr_hathat = util.calculate_psnr(P_hathat_img_y, P_img, border=border)
+                    current_psnr_hat    = util.calculate_psnr(util.rgb2ycbcr(E_img), util.rgb2ycbcr(P_img), border=border)
+                    current_psnr_hathat = util.calculate_psnr(util.rgb2ycbcr(Q_img), util.rgb2ycbcr(P_img), border=border)
 
                     logger.info('PSNR(P^ , P): {:->4d}--> {:>10s} | {:<4.2f}dB'.format(idx, image_name_ext, current_psnr_hat))
                     logger.info('PSNR(P^^, P): {:->4d}--> {:>10s} | {:<4.2f}dB'.format(idx, image_name_ext, current_psnr_hathat))
@@ -259,8 +220,8 @@ def main(json_path='options/train_bwsr_y.json'):
                     # -----------------------
                     # calculate SSIM
                     # -----------------------
-                    current_ssim_hat    = util.calculate_ssim(E_img, P_img, border=border)
-                    current_ssim_hathat = util.calculate_ssim(P_hathat_img_y, P_img, border=border)
+                    current_ssim_hat    = util.calculate_ssim(util.rgb2ycbcr(E_img), util.rgb2ycbcr(P_img), border=border)
+                    current_ssim_hathat = util.calculate_ssim(util.rgb2ycbcr(Q_img), util.rgb2ycbcr(P_img), border=border)
 
                     logger.info('SSIM(P^ , P): {:->4d}--> {:>10s} | {:<5.4f}'.format(idx, image_name_ext, current_ssim_hat))
                     logger.info('SSIM(P^^, P): {:->4d}--> {:>10s} | {:<5.4f}'.format(idx, image_name_ext, current_ssim_hathat))
@@ -275,7 +236,9 @@ def main(json_path='options/train_bwsr_y.json'):
                     # save estimated image E
                     # -----------------------
                     save_img_path = os.path.join(img_dir, '{:s}_{:d}_{:05.2f}_{:5.4f}.png'.format(img_name, current_step, current_psnr_hathat, current_ssim_hathat))
-                    util.imsave(P_hathat_img, save_img_path)
+                    if test_step == 0:
+                        util.imsave(P_img, os.path.join(img_dir, f'{img_name}.png'))
+                    util.imsave(Q_img, save_img_path)
 
                 avg_psnr_hat = avg_psnr_hat / idx
                 avg_psnr_hathat = avg_psnr_hathat / idx

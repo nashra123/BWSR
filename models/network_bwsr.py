@@ -2,6 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import numpy as np
+from utils import utils_image as util
+from utils import utils_deblur as deblur
+
 
 class BasicResidualBlock(nn.Module): 
     """Basic Residual Block
@@ -80,10 +84,30 @@ class KernelEstimateNet(nn.Module):
         mod_image = self.conv2(mod_image)
         mod_image = F.relu(mod_image)
 
-        hr_image_est = mod_image + lr_image
+        sharp_image_est = mod_image + lr_image
 
         # estimate h tilde [m, n]
-        kernel_est = self.kernel_est_block(lr_image, hr_image_est)
+        kernel_est = self.kernel_est_block(lr_image, sharp_image_est)
 
-        return hr_image_est, kernel_est
+        with torch.no_grad():
+
+          hr_image_est = torch.zeros_like(lr_image)
+          for i in range(lr_image.size(0)):
+
+            L_img = util.tensor2uint(lr_image[i])
+            K_img = util.tensor2uint(kernel_est[i])
+
+            blur_kernel = K_img.sum(axis=-1, dtype=np.float64)
+            blur_kernel = blur_kernel / blur_kernel.sum()
+            blur_kernel = blur_kernel.squeeze()
+            
+            Q_img = np.zeros_like(L_img, dtype=np.float64)
+            Q_img[:, :, 0] = deblur.wiener_filter(L_img[:, :, 0], blur_kernel, K=1)
+            Q_img[:, :, 1] = deblur.wiener_filter(L_img[:, :, 1], blur_kernel, K=1)
+            Q_img[:, :, 2] = deblur.wiener_filter(L_img[:, :, 2], blur_kernel, K=1)
+            Q_img = util.single2uint(Q_img / Q_img.max())
+
+            hr_image_est[i] = util.uint2tensor3(Q_img)
+
+        return sharp_image_est, hr_image_est, kernel_est
 

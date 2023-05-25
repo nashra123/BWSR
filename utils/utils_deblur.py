@@ -13,10 +13,47 @@ import random
 # import utils_image as util
 
 '''
+modified by AmirMohammad Babaei (github: https://github.com/AmirMohamadBabaee)
 modified by Kai Zhang (github: https://github.com/cszn)
 03/03/2019
 '''
 
+def wiener_filter(img, kernel, K):
+    kernel /= np.sum(kernel)
+    dummy = np.copy(img)
+    dummy = np.fft.fft2(dummy)
+    kernel = np.fft.fft2(kernel, s = img.shape)
+    kernel = np.conj(kernel) / (np.abs(kernel) ** 2 + K)
+    dummy = dummy * kernel
+    dummy = np.abs(np.fft.ifft2(dummy))
+    return dummy
+
+def wiener_filter_torch(img, kernel, K):
+    kernel = kernel / kernel.sum()
+    dummy = torch.clone(img)
+    dummy = torch.fft.fft2(dummy)
+    kernel = torch.fft.fft2(kernel, s=img.size())
+    kernel = torch.conj(kernel) / (torch.abs(kernel) ** 2 + K)
+    dummy = dummy * kernel
+    dummy = torch.abs(torch.fft.ifft2(dummy))
+    return dummy
+
+def wiener_filter_torch_batch(lr_images, kernels, K=1e-3):
+    """
+    lr_images: y     [b, c, m, n]
+    kernels: P hat [b, c, m, n]
+    """
+
+    lr_images_spectral  = torch.fft.fft2(lr_images)
+    kernels_spectral    = torch.fft.fft2(kernels)
+
+    kernels_spectral_abs   = torch.abs(kernels_spectral)
+    kernels_spectral_conj  = torch.conj(kernels_spectral)
+
+    nominator   = kernels_spectral_conj * lr_images_spectral
+    denominator = kernels_spectral_abs ** 2 + K
+
+    return torch.abs(torch.fft.ifft2(nominator / denominator))
 
 def get_uperleft_denominator(img, kernel):
     '''
