@@ -643,7 +643,7 @@ class SwinIR(nn.Module):
         resi_connection: The convolutional block before residual connection. '1conv'/'3conv'
     """
 
-    def __init__(self, img_size=64, patch_size=1, in_chans=3,
+    def __init__(self, img_size=64, patch_size=1, in_chans=3, out_chans=3,
                  embed_dim=96, depths=[6, 6, 6, 6], num_heads=[6, 6, 6, 6],
                  window_size=7, mlp_ratio=4., qkv_bias=True, qk_scale=None,
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
@@ -652,7 +652,7 @@ class SwinIR(nn.Module):
                  **kwargs):
         super(SwinIR, self).__init__()
         num_in_ch = in_chans
-        num_out_ch = in_chans
+        num_out_ch = out_chans
         num_feat = 64
         self.img_range = img_range
         if in_chans == 3:
@@ -802,28 +802,32 @@ class SwinIR(nn.Module):
 
         return x
 
-    def forward(self, x):
+    def forward(self, x, is_feature=False):
         H, W = x.shape[2:]
         x = self.check_image_size(x)
 
-        self.mean = self.mean.type_as(x)
-        x = (x - self.mean) * self.img_range
+        if not is_feature:
+            self.mean = self.mean.type_as(x)
+            x = (x - self.mean) * self.img_range
 
         if self.upsampler == 'pixelshuffle':
             # for classical SR
             x = self.conv_first(x)
             x = self.conv_after_body(self.forward_features(x)) + x
+            x_feature = torch.clone(x)
             x = self.conv_before_upsample(x)
             x = self.conv_last(self.upsample(x))
         elif self.upsampler == 'pixelshuffledirect':
             # for lightweight SR
             x = self.conv_first(x)
             x = self.conv_after_body(self.forward_features(x)) + x
+            x_feature = torch.clone(x)
             x = self.upsample(x)
         elif self.upsampler == 'nearest+conv':
             # for real-world SR
             x = self.conv_first(x)
             x = self.conv_after_body(self.forward_features(x)) + x
+            x_feature = torch.clone(x)
             x = self.conv_before_upsample(x)
             x = self.lrelu(self.conv_up1(torch.nn.functional.interpolate(x, scale_factor=2, mode='nearest')))
             x = self.lrelu(self.conv_up2(torch.nn.functional.interpolate(x, scale_factor=2, mode='nearest')))
@@ -832,11 +836,13 @@ class SwinIR(nn.Module):
             # for image denoising and JPEG compression artifact reduction
             x_first = self.conv_first(x)
             res = self.conv_after_body(self.forward_features(x_first)) + x_first
+            x_feature = torch.clone(res)
             x = x + self.conv_last(res)
 
-        x = x / self.img_range + self.mean
+        if not is_feature:
+            x = x / self.img_range + self.mean
 
-        return x[:, :, :H*self.upscale, :W*self.upscale]
+        return x[:, :, :H*self.upscale, :W*self.upscale], x_feature[:, :, :H, :W]
 
     def flops(self):
         flops = 0
