@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import numpy as np
-from utils import utils_image as util
 from utils import utils_deblur as deblur
+from utils import utils_image as util
 
 
 class BasicResidualBlock(nn.Module): 
@@ -68,6 +68,7 @@ class KernelEstimateNet(nn.Module):
         self.resblock1          = BasicResidualBlock(64)
         self.resblock2          = BasicResidualBlock(64)
         self.kernel_est_block   = KernelEstimateBlock()
+        self.image_est_block    = KernelEstimateBlock(epsilon=1)
 
     def forward(self, lr_image):
         """

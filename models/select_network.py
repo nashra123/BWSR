@@ -254,9 +254,12 @@ def define_G(opt):
         from models.network_bwsr import KernelEstimateNet as net
         netG = net()
 
-    elif net_type == 'bwsr_y':
-        from models.network_bwsr_y import KernelEstimateNet as net
-        netG = net()
+    # ----------------------------------------
+    # BWSR (SwinIR version)
+    # ----------------------------------------
+    elif net_type == 'bwsr-swinir':
+        from models.network_bwsr_swinir import BWSR_SwinIR as net
+        netG = net(opt_net)
     
     # ----------------------------------------
     # others
@@ -270,10 +273,28 @@ def define_G(opt):
     # initialize weights
     # ----------------------------------------
     if opt['is_train']:
-        init_weights(netG,
-                     init_type=opt_net['init_type'],
-                     init_bn_type=opt_net['init_bn_type'],
-                     gain=opt_net['init_gain'])
+        if net_type == 'bwsr-swinir':
+            init_weights(netG.f1_net,
+                    init_type=opt_net['swinir']['f1']['init_type'],
+                    init_bn_type=opt_net['init_bn_type'],
+                    gain=opt_net['init_gain'])
+            init_weights(netG.f2_net,
+                    init_type=opt_net['swinir']['f2']['init_type'],
+                    init_bn_type=opt_net['init_bn_type'],
+                    gain=opt_net['init_gain'])
+            init_weights(netG.f3_net,
+                    init_type=opt_net['swinir']['f3']['init_type'],
+                    init_bn_type=opt_net['init_bn_type'],
+                    gain=opt_net['init_gain'])
+            init_weights(netG.f4_net,
+                    init_type=opt_net['swinir']['f4']['init_type'],
+                    init_bn_type=opt_net['init_bn_type'],
+                    gain=opt_net['init_gain'])
+        else:
+            init_weights(netG,
+                        init_type=opt_net['init_type'],
+                        init_bn_type=opt_net['init_bn_type'],
+                        gain=opt_net['init_gain'])
 
     return netG
 
