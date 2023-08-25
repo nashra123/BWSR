@@ -64,7 +64,9 @@ class KernelEstimateNet(nn.Module):
         kernel_est = deblur.kernel_estimate(sharp_image_est, lr_image)
 
         with torch.no_grad():
-            hr_image_est = deblur.wiener_deconv(lr_image, kernel_est)
+            # print(f'{kernel_est.shape=}')
+            # print(f'{lr_image.shape=}')
+            hr_image_est = deblur.wiener_deconv(lr_image, kernel_est.unsqueeze(1), 0.15)
 
         return sharp_image_est, hr_image_est, kernel_est
 

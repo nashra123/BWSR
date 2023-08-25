@@ -107,6 +107,13 @@ class ModelKernelEstimate(ModelPlain):
         self.E, self.Q, self.K = self.netG(self.L)
 
     # ----------------------------------------
+    # feed L to netE
+    # ----------------------------------------
+    def netE_forward(self):
+        # E     ~ P^[m, n]
+        self.E, self.Q, self.K = self.netE(self.L)
+
+    # ----------------------------------------
     # update parameters and get loss
     # ----------------------------------------
     def optimize_parameters(self, current_step):
@@ -149,10 +156,8 @@ class ModelKernelEstimate(ModelPlain):
     # test / inference
     # ----------------------------------------
     def test(self):
-        self.netG.eval()
         with torch.no_grad():
-            self.netG_forward()
-        self.netG.train()
+            self.netE_forward()
 
     # ----------------------------------------
     # get L, P, E, K, H image
