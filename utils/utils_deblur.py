@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import scipy
-from scipy import fftpack
+from scipy import fftpack, signal
 import torch
 
 from math import cos, sin
@@ -17,6 +17,53 @@ modified by AmirMohammad Babaei (github: https://github.com/AmirMohamadBabaee)
 modified by Kai Zhang (github: https://github.com/cszn)
 03/03/2019
 '''
+
+
+def barthann2d(size=(512, 512)):
+    barthann_x = signal.windows.barthann(size[1])
+    barthann_x = np.tile(barthann_x, size[0]).reshape(size)
+    barthann_y = signal.windows.barthann(size[0])
+    barthann_y = np.tile(barthann_y, size[1]).reshape((size[1], size[0])).T
+    barthann = barthann_x * barthann_y
+    return barthann
+
+def kernel_estimate(hr_img, hr_blur_img, gamma_1=1.0):
+    N, C, H, W =  hr_img.shape
+
+    window = torch.tensor(barthann2d(size=(H, W)), dtype=torch.float)
+    window = window.expand(N, C, *window.shape).to(hr_img)
+
+    y = hr_blur_img
+    x = hr_img
+
+    Fy = torch.fft.fft2(y * window)
+    Fx = torch.fft.fft2(x * window)
+
+    # w/o regularization
+    H_hat = ((torch.conj(Fx) * Fy).sum(1)) / ((torch.abs(Fx)**2).sum(1) + gamma_1)
+    h_hat = torch.fft.ifft2(H_hat)
+
+    h_hat = torch.maximum(torch.real(torch.fft.fftshift(h_hat, dim=(-2, -1))),
+                        torch.tensor(0.0))
+    
+    h_hat = h_hat / torch.sum(h_hat, dim=(-2, -1), keepdim=True)
+    return h_hat
+
+def wiener_deconv(hr_blur_img, k_img, gamma_1=1.0e-1):
+
+    y = hr_blur_img
+    h = k_img
+
+    Fy = torch.fft.fft2(y)
+    Fh = torch.fft.fft2(h)
+
+    # w/o regularization
+    X_hat = ((torch.conj(Fh) * Fy)) / ((torch.abs(Fh)**2) + gamma_1)
+    x_hat = torch.fft.ifft2(X_hat)
+
+    x_hat = torch.real(torch.fft.fftshift(x_hat, dim=(-2, -1)))
+    
+    return x_hat
 
 def wiener_filter(img, kernel, K):
     kernel /= np.sum(kernel)

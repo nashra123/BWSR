@@ -33,31 +33,6 @@ class BasicResidualBlock(nn.Module):
         return x
 
 
-class KernelEstimateBlock(nn.Module):
-
-    def __init__(self, epsilon=1e-3):
-        super(KernelEstimateBlock, self).__init__()
-
-        self.epsilon = epsilon
-
-    def forward(self, lr_image, hr_image):
-        """
-        lr_image: y     [m, n]
-        hr_image: P hat [m, n]
-        """
-
-        lr_image_spectral   = torch.fft.fft2(lr_image)
-        hr_image_spectral   = torch.fft.fft2(hr_image)
-
-        hr_image_spectral_abs   = torch.abs(hr_image_spectral)
-        hr_image_spectral_conj  = torch.conj(hr_image_spectral)
-
-        nominator   = hr_image_spectral_conj * lr_image_spectral
-        denominator = hr_image_spectral_abs ** 2 + self.epsilon
-
-        return torch.abs(torch.fft.ifft2(nominator / denominator))
-
-
 class KernelEstimateNet(nn.Module):
 
     def __init__(self):
@@ -67,8 +42,6 @@ class KernelEstimateNet(nn.Module):
         self.conv2              = nn.Conv2d(64, 3, kernel_size=3, padding=1)
         self.resblock1          = BasicResidualBlock(64)
         self.resblock2          = BasicResidualBlock(64)
-        self.kernel_est_block   = KernelEstimateBlock()
-        self.image_est_block    = KernelEstimateBlock(epsilon=1)
 
     def forward(self, lr_image):
         """
@@ -88,27 +61,10 @@ class KernelEstimateNet(nn.Module):
         sharp_image_est = mod_image + lr_image
 
         # estimate h tilde [m, n]
-        kernel_est = self.kernel_est_block(lr_image, sharp_image_est)
+        kernel_est = deblur.kernel_estimate(sharp_image_est, lr_image)
 
         with torch.no_grad():
-
-          hr_image_est = torch.zeros_like(lr_image)
-          for i in range(lr_image.size(0)):
-
-            L_img = util.tensor2uint(lr_image[i])
-            K_img = util.tensor2uint(kernel_est[i])
-
-            blur_kernel = K_img.sum(axis=-1, dtype=np.float64)
-            blur_kernel = blur_kernel / blur_kernel.sum()
-            blur_kernel = blur_kernel.squeeze()
-            
-            Q_img = np.zeros_like(L_img, dtype=np.float64)
-            Q_img[:, :, 0] = deblur.wiener_filter(L_img[:, :, 0], blur_kernel, K=1)
-            Q_img[:, :, 1] = deblur.wiener_filter(L_img[:, :, 1], blur_kernel, K=1)
-            Q_img[:, :, 2] = deblur.wiener_filter(L_img[:, :, 2], blur_kernel, K=1)
-            Q_img = util.single2uint(Q_img / Q_img.max())
-
-            hr_image_est[i] = util.uint2tensor3(Q_img)
+            hr_image_est = deblur.wiener_deconv(lr_image, kernel_est)
 
         return sharp_image_est, hr_image_est, kernel_est
 
